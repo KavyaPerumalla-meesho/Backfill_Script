@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-ScyllaDB Data Backfill Script
-Copies data from production to staging ScyllaDB databases.
-"""
-
 import os
 import sys
 import logging
@@ -22,7 +16,6 @@ from dotenv import load_dotenv
 
 @dataclass
 class PerformanceMetrics:
-    """Performance metrics tracking."""
     records_per_second: float = 0.0
     memory_usage_percent: float = 0.0
     cpu_usage_percent: float = 0.0
@@ -31,7 +24,6 @@ class PerformanceMetrics:
 
 @dataclass
 class Checkpoint:
-    """Checkpoint for resume capability."""
     table_name: str
     processed_count: int
     total_count: int
@@ -39,7 +31,6 @@ class Checkpoint:
     batch_size: int
 
 def setup_logging(log_level: str = 'INFO'):
-    """Setup structured logging."""
     logging.basicConfig(
         level=getattr(logging, log_level.upper()),
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -48,7 +39,6 @@ def setup_logging(log_level: str = 'INFO'):
     return logging.getLogger('backfill')
 
 class ScyllaBackfillService:
-    """Main service for ScyllaDB data backfill operations."""
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config
@@ -75,12 +65,10 @@ class ScyllaBackfillService:
         signal.signal(signal.SIGTERM, self._signal_handler)
     
     def _signal_handler(self, signum, frame):
-        """Handle shutdown signals gracefully."""
         self.logger.info(f"Received signal {signum}, initiating graceful shutdown...")
         self.running = False
     
     def initialize_services(self):
-        """Initialize ScyllaDB connections."""
         try:
             # Initialize source Scylla service
             self.src_service = ScyllaDBService(
@@ -106,7 +94,6 @@ class ScyllaBackfillService:
             return False
     
     def copy_table_data(self, table_name: str, batch_size: int = 1000) -> bool:
-        """Copy data from source to target for a specific table in batches with professional features."""
         table_start_time = time.time()
         
         try:
@@ -221,7 +208,6 @@ class ScyllaBackfillService:
             return False
     
     def save_checkpoint(self, table_name: str, processed_count: int, total_count: int, batch_size: int):
-        """Save progress checkpoint for resume capability."""
         try:
             os.makedirs(self.checkpoint_dir, exist_ok=True)
             checkpoint = Checkpoint(
@@ -239,7 +225,6 @@ class ScyllaBackfillService:
             self.logger.warning(f"Failed to save checkpoint: {e}")
     
     def load_checkpoint(self, table_name: str) -> Optional[Checkpoint]:
-        """Load checkpoint for resume capability."""
         try:
             checkpoint_file = os.path.join(self.checkpoint_dir, f'{table_name}.json')
             if os.path.exists(checkpoint_file):
@@ -251,7 +236,6 @@ class ScyllaBackfillService:
         return None
     
     def clear_checkpoint(self, table_name: str):
-        """Clear checkpoint after successful completion."""
         try:
             checkpoint_file = os.path.join(self.checkpoint_dir, f'{table_name}.json')
             if os.path.exists(checkpoint_file):
@@ -261,7 +245,6 @@ class ScyllaBackfillService:
             self.logger.warning(f"Failed to clear checkpoint: {e}")
     
     def get_performance_metrics(self, table_name: str, duration: float, record_count: int) -> PerformanceMetrics:
-        """Calculate performance metrics."""
         try:
             rps = record_count / duration if duration > 0 else 0
             memory_usage = psutil.virtual_memory().percent
@@ -279,7 +262,6 @@ class ScyllaBackfillService:
             return PerformanceMetrics()
     
     def log_performance_metrics(self, table_name: str, metrics: PerformanceMetrics):
-        """Log detailed performance metrics."""
         self.logger.info(f"⚡ Performance Metrics for {table_name}:")
         self.logger.info(f"   📊 Records/second: {metrics.records_per_second:.2f}")
         self.logger.info(f"   💾 Memory usage: {metrics.memory_usage_percent:.1f}%")
@@ -288,7 +270,6 @@ class ScyllaBackfillService:
         self.logger.info(f"   📈 Total records: {metrics.total_records:,}")
     
     def validate_data_integrity_detailed(self, table_name: str) -> bool:
-        """Enhanced data integrity validation with detailed checks."""
         try:
             # Get counts
             src_count = self.src_service.session.execute(f'SELECT COUNT(*) FROM {table_name}').one()[0]
@@ -319,11 +300,9 @@ class ScyllaBackfillService:
             return False
     
     def process_batch_parallel(self, batches: List[List[Any]], table_name: str, columns: List[str], insert_query: str) -> int:
-        """Process batches in parallel using ThreadPoolExecutor."""
         processed_count = 0
         
         def process_single_batch(batch_data):
-            """Process a single batch."""
             batch_processed = 0
             for row in batch_data:
                 values = [getattr(row, col) for col in columns]
@@ -361,7 +340,6 @@ class ScyllaBackfillService:
         return processed_count
     
     def verify_data_integrity(self, table_name: str) -> bool:
-        """Verify that source and target have the same record count."""
         try:
             src_count = self.src_service.session.execute(f'SELECT COUNT(*) FROM {table_name}').one()[0]
             tgt_count = self.tgt_service.session.execute(f'SELECT COUNT(*) FROM {table_name}').one()[0]
@@ -377,7 +355,6 @@ class ScyllaBackfillService:
             return False
     
     def run_backfill(self, tables: List[str]):
-        """Run the complete backfill process."""
         self.logger.info("🚀 Starting ScyllaDB data backfill process")
         
         try:
@@ -420,7 +397,6 @@ class ScyllaBackfillService:
             self.cleanup()
     
     def cleanup(self):
-        """Cleanup database connections."""
         try:
             if hasattr(self, 'src_service'):
                 self.src_service.close()
@@ -431,7 +407,6 @@ class ScyllaBackfillService:
             self.logger.error(f"Error during cleanup: {e}")
 
 def load_configuration() -> Dict[str, Any]:
-    """Load configuration from environment variables."""
     load_dotenv('proto_backfill.env')
     
     config = {
@@ -457,7 +432,6 @@ def load_configuration() -> Dict[str, Any]:
     return config
 
 def load_tables_from_config() -> List[str]:
-    """Load table names from tables.json configuration file."""
     try:
         if os.path.exists('tables.json'):
             with open('tables.json', 'r') as f:
@@ -472,7 +446,6 @@ def load_tables_from_config() -> List[str]:
         return []
 
 def main():
-    """Main entry point."""
     parser = argparse.ArgumentParser(description='ScyllaDB Data Backfill Service')
     parser.add_argument('--tables', nargs='+', help='Tables to process')
     parser.add_argument('--log-level', default='INFO', help='Log level')
@@ -482,14 +455,9 @@ def main():
     parser.add_argument('--no-parallel', action='store_true', help='Disable parallel processing')
     
     args = parser.parse_args()
-    
-    # Setup logging
     logger = setup_logging(args.log_level)
-    
-    # Load configuration
     config = load_configuration()
     
-    # Override configuration with command line arguments
     if args.batch_size:
         config['batch_size'] = args.batch_size
         logger.info(f"Using command line batch size: {args.batch_size:,}")
@@ -506,14 +474,11 @@ def main():
         config['enable_parallel'] = False
         logger.info("Parallel processing disabled")
     
-    # Use provided tables or load from config file
     if args.tables:
         tables = args.tables
     else:
-        # Try to load tables from config file
         tables = load_tables_from_config()
         if not tables:
-            # Fallback to default tables if no config found
             tables = [
                 'logistic_unbundling_details',
                 'product_details', 
@@ -525,7 +490,6 @@ def main():
             logger.warning("No tables configuration found, using default tables")
             logger.info("To use custom tables, create a 'tables.json' file or use --tables parameter")
     
-    # Create and run service
     service = ScyllaBackfillService(config)
     
     try:

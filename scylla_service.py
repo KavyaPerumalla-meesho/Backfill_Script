@@ -9,12 +9,6 @@ class ScyllaDBService:
     def __init__(self, contact_points: List[str], username: str, password: str, keyspace: str):
         """
         Initializes the ScyllaDB service, connecting to the cluster and setting a session.
-        
-        Args:
-            contact_points: A list of IP addresses for the cluster nodes.
-            username: The username for plain-text authentication.
-            password: The password for plain-text authentication.
-            keyspace: The keyspace to connect to.
         """
         self.contact_points = contact_points
         self.username = username
@@ -25,9 +19,6 @@ class ScyllaDBService:
         self._connect()
 
     def _connect(self) -> None:
-        """
-        Internal method to establish a connection to the ScyllaDB cluster.
-        """
         try:
             auth_provider = PlainTextAuthProvider(self.username, self.password)
             self.cluster = Cluster(self.contact_points, auth_provider=auth_provider)
@@ -42,24 +33,11 @@ class ScyllaDBService:
             raise
 
     def close(self) -> None:
-        """
-        Closes the cluster connection.
-        """
         if self.cluster:
             self.cluster.shutdown()
             logging.info("ScyllaDB connection closed.")
 
     def read_data(self, table_name: str, columns: List[str]) -> Optional[List[Dict[str, Any]]]:
-        """
-        Reads all data from a specified table.
-        
-        Args:
-            table_name: The name of the table to read from.
-            columns: A list of columns to select.
-            
-        Returns:
-            A list of rows (dictionaries) from the table, or None on error.
-        """
         select_query = f"SELECT {', '.join(columns)} FROM {table_name}"
         try:
             # The driver automatically handles pagination for large results
@@ -70,15 +48,6 @@ class ScyllaDBService:
             return None
 
     def write_data(self, table_name: str, rows: List[Dict[str, Any]], columns: List[str], batch_size: int = 50) -> None:
-        """
-        Writes data to a specified table using batched inserts.
-        
-        Args:
-            table_name: The name of the table to write to.
-            rows: A list of rows (dictionaries) to insert.
-            columns: A list of columns corresponding to the row data.
-            batch_size: The number of inserts per batch.
-        """
         if not rows:
             logging.warning(f"No data to write to table '{table_name}'.")
             return
